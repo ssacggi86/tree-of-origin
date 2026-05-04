@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기원의 나무: 파이어플라이 은하</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Pretendard', sans-serif;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* [메시지 카드: 에코-사이버 글래스모피즘] */
+        .message-label-wrapper {
+            pointer-events: none;
+        }
+
+        .message-label {
+            background: rgba(10, 10, 15, 0.7);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px 25px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
+            width: 240px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            white-space: pre-wrap;
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            line-height: 1.4;
+            opacity: 0;
+            transform: scale(0.4);
+            filter: drop-shadow(0 0 10px currentColor);
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .message-label.visible {
+            opacity: 1;
+            transform: scale(1.5);
+            animation: breathe 4s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+
+            0%,
+            100% {
+                transform: scale(1.4);
+                filter: drop-shadow(0 0 10px currentColor);
+            }
+
+            50% {
+                transform: scale(1.6);
+                filter: drop-shadow(0 0 25px currentColor);
+            }
+        }
+
+        #festival-text {
+            position: absolute;
+            top: 30px;
+            left: 40px;
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 16px;
+            font-weight: 200;
+            letter-spacing: 8px;
+            z-index: 10;
+            text-transform: uppercase;
+        }
+
+        #status-bar {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.15);
+            letter-spacing: 2px;
+            z-index: 10;
+        }
+
+        #audio-control {
+            position: absolute;
+            bottom: 20px;
+            left: 30px;
+            z-index: 100;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 12px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+
+        /* [Pleiades Gateway - Bilateral QR Boxes] */
+        .qr-container {
+            position: absolute;
+            bottom: 30px;
+            width: 140px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #ff00ff;
+            border-radius: 15px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 25px #ff00ff, inset 0 0 10px #ff00ff55;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+        #qr-container-left { left: 30px; display: none; } /* 좌우 QR은 숨김 처리 */
+        #qr-container-right { right: 30px; display: none; }
+        
+        #qr-container-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 180px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #00ffff;
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 0 35px rgba(0, 255, 255, 0.4), inset 0 0 15px rgba(0, 255, 255, 0.2);
+            z-index: 1000;
+            transition: all 0.5s ease;
+        }
+
+        #qr-container-center:hover { transform: translate(-50%, -52%) scale(1.05); }
+        
+        #qr-image-center {
+            width: 150px;
+            height: 150px;
+            background: #fff;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        #qr-image-center img { width: 100%; height: 100%; object-fit: cover; }
+        .qr-code-box {
+            background: #fff;
+            padding: 6px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .qr-code-box canvas, .qr-code-box img { max-width: 100%; height: auto !important; }
+        .qr-label {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px #00ffff;
+            text-transform: uppercase;
+            margin-top: 15px;
+            z-index: 101;
+            opacity: 1;
+            display: block;
+        }
+
+        @keyframes scan-down {
+            0% {
+                top: 0%;
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                top: 100%;
+                opacity: 0;
+            }
+        }
+
+        .scan-active {
+            animation: scan-down 2s ease-in-out forwards;
+        }
+
+        /* [Final Layer Fix] 최상단 캔버스의 투명도 및 블렌딩 처리 */
+        #main-webgl-canvas {
+            mix-blend-mode: screen;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <audio id="bgm" loop>
+        <source src="https://assets.mixkit.co/music/preview/mixkit-space-ambient-592.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="qr-container-center">
+        <div id="qr-image-center">
+            <!-- QR 이미지가 들어갈 공간 -->
+            <div id="qr-placeholder" style="color:#000; font-size:12px; font-weight:bold; text-align:center; padding:10px;">QR 이미지 준비 중</div>
+        </div>
+        <div class="qr-label" style="text-shadow: 0 0 8px #00ffff;">소망을 남겨주세요</div>
+    </div>
+
+    <!-- QR 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // --- [설정 및 전역 변수] ---
+        let config = {
+            maxMessages: 30,      
+            density: 1.0,
+            spawnRangeX: 800,     
+            displayZone: { w: 450, h: 280, d: 60 },
+            floatSpeed: 0.5 
+        };
+
+        let scene, camera, renderer, labelRenderer, composer, clock = new THREE.Clock();
+        let bgScene, bgCamera, bgRenderer; // 배경용 렌더러 분리
+        let bgMaterial, fireflies = [];
+        let fireflyMap = new Map(); // ID로 파이어플라이 인스턴스를 찾기 위한 맵
+        let globalIdCounter = 1000; // 높은 숫자로 시작하여 zIndex 우선순위 확보
+        let fxParticles = [];
+        const MAX_FX_PARTICLES = 300; 
+        const MESSAGE_LIFE_MS = 10 * 60 * 1000; // 10분 (밀리초)
+        window.Firefly = null;
+
+        // [쉐이더: 고정밀 가우시안 글로우]
+        const fireflyVertexShader = `
+            attribute float size;
+            attribute vec3 color;
+            varying vec3 vColor;
+            void main() {
+                vColor = color;
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_PointSize = size * (300.0 / -mvPosition.z);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `;
+
+        const fireflyFragmentShader = `
+            varying vec3 vColor;
+            void main() {
+                // gl_PointCoord (0.0~1.0)를 사용한 스타버스트 렌더링
+                float d2 = dot(gl_PointCoord - 0.5, gl_PointCoord - 0.5);
+                if (d2 > 0.25) discard;
+                
+                // 배경 별과 동일한 수식 (Core + Halo)
+                float size = 0.04; 
+                float s2 = size * size;
+                float core = 0.35 / (d2 / s2 + 0.012);
+                float halo = 0.05 / (d2 / (s2 * 15.0) + 0.08);
+                
+                gl_FragColor = vec4(vColor * (core + halo), 1.0);
+            }
+        `;
+
+        // [배경 쉐이더: Pleiades Star Cluster]
+        const pleiadesFragmentShader = `
+            uniform float iTime;
+            uniform vec2 iResolution;
+            varying vec2 vUv;
+
+            #define BLUEFACTOR 1.5
+            const int NUM_STARS = 30;
+            vec3 getStarColor(int i) {
+                if(i<10) {
+                    if(i==0) return vec3(0.72, 0.82, 1.0); if(i==1) return vec3(0.78, 0.86, 1.0);
+                    if(i==2) return vec3(0.68, 0.80, 1.0); if(i==3) return vec3(0.72, 0.82, 1.0);
+                    if(i==4) return vec3(0.68, 0.80, 1.0); if(i==5) return vec3(0.66, 0.78, 1.0);
+                    if(i==6) return vec3(0.78, 0.86, 1.0); if(i==7) return vec3(0.72, 0.82, 1.0);
+                    if(i==8) return vec3(0.78, 0.86, 1.0); if(i==9) return vec3(0.85, 0.90, 1.0);
+                } else if(i<20) {
+                    if(i==10) return vec3(0.78, 0.86, 1.0); if(i==11) return vec3(0.78, 0.86, 1.0);
+                    if(i==12) return vec3(0.82, 0.88, 1.0); if(i==13) return vec3(0.82, 0.88, 1.0);
+                    if(i==14) return vec3(0.85, 0.90, 1.0); if(i==15) return vec3(0.78, 0.86, 1.0);
+                    if(i==16) return vec3(0.82, 0.88, 1.0); if(i==17) return vec3(0.82, 0.88, 1.0);
+                    if(i==18) return vec3(0.80, 0.85, 1.0); if(i==19) return vec3(0.82, 0.88, 1.0);
+                } else {
+                    if(i==20) return vec3(0.70, 0.85, 1.0); if(i==21) return vec3(0.75, 0.88, 1.0);
+                    if(i==22) return vec3(0.65, 0.82, 1.0); if(i==23) return vec3(0.70, 0.85, 1.0);
+                    if(i==24) return vec3(0.80, 0.90, 1.0); if(i==25) return vec3(0.75, 0.85, 1.0);
+                    if(i==26) return vec3(0.70, 0.82, 1.0); if(i==27) return vec3(0.72, 0.85, 1.0);
+                    if(i==28) return vec3(0.85, 0.92, 1.0); if(i==29) return vec3(0.78, 0.88, 1.0);
+                }
+                return vec3(1.0);
+            }
+            
+            vec3 getStarPos(int i) {
+                if(i<10) {
+                    if(i==0) return vec3( 1.15, -0.05, -0.4); if(i==1) return vec3( 4.58, -0.62, 2.1);
+                    if(i==2) return vec3(-4.40, -0.05, -1.9); if(i==3) return vec3(-2.42, 2.32, -2.6);
+                    if(i==4) return vec3(-1.41, -1.58, 5.2);  if(i==5) return vec3(-3.76, 3.21, -2.5);
+                    if(i==6) return vec3( 4.62, 0.22, 1.9);  if(i==7) return vec3(-4.56, 1.60, -0.8);
+                    if(i==8) return vec3(-2.28, 4.01, -4.0); if(i==9) return vec3(-1.97, 3.78, -1.5);
+                } else if(i<20) {
+                    if(i==10) return vec3(-3.82, 6.65, 2.3); if(i==11) return vec3(2.85, -6.42, -6.2);
+                    if(i==12) return vec3(0.74, 0.02, 2.7); if(i==13) return vec3(-0.02, 3.71, 1.3);
+                    if(i==14) return vec3(3.16, 2.12, -4.2); if(i==15) return vec3(-3.34, 1.08, 0.5);
+                    if(i==16) return vec3(3.75, -2.31, 3.8); if(i==17) return vec3(-5.70, -0.95, -2.9);
+                    if(i==18) return vec3(0.60, 1.53, -0.1); if(i==19) return vec3(4.38, -3.68, 3.1);
+                } else {
+                    if(i==20) return vec3(-2.0, -4.5, -3.0); if(i==21) return vec3( 3.5, 4.2, 1.5);
+                    if(i==22) return vec3(-6.0, 1.0, -4.0);  if(i==23) return vec3( 5.5, -2.5, 2.0);
+                    if(i==24) return vec3( 1.5, -7.0,-5.5);  if(i==25) return vec3(-4.0, -3.0, 4.0);
+                    if(i==26) return vec3( 7.0, 3.0, -2.0);  if(i==27) return vec3(-1.0, 5.5, 1.0);
+                    if(i==28) return vec3(-8.0, -1.0, 0.5);  if(i==29) return vec3( 2.5, 6.0, -3.5);
+                }
+                return vec3(0.0);
+            }
+
+            #define CLUSTER_CENTER vec3(0.0, 0.8, 0.0)
+            #define ORBIT_RADIUS 14.0
+            #define ORBIT_SPEED 0.1
+            #define CAMERA_ZOOM 0.85
+            // [배경 커스텀 수치]
+            #define EXPOSURE 1.2     // 전체 밝기 상향
+            #define CORE_GAIN 0.35   // 별 중심부 밝기 상향
+            #define HALO_GAIN 0.02  // 별 테두리 후광 상향
+            #define NEBULA_STRENGTH 0.1 // 우주 성운의 진함 정도
+            const vec3 WORLD_UP = vec3(0.0, 1.0, 0.0);
+            const vec3 GAL_NORTH = normalize(vec3(0.617, 0.679, 0.399));
+            const vec3 GAL_CENTER = normalize(vec3(-0.433, -0.130, 0.892));
+
+            struct Ray { vec3 o, d; };
+            Ray setupCamera(vec2 uv, vec3 pos, vec3 lookAt, float zoom, vec3 upHint) {
+                vec3 fwd = normalize(lookAt - pos);
+                vec3 upRef = (abs(dot(fwd, upHint)) > 0.999) ? vec3(0.0, 0.0, 1.0) : upHint;
+                vec3 right = normalize(cross(fwd, upRef));
+                vec3 up = normalize(cross(right, fwd));
+                vec3 img = pos + fwd * zoom + right * uv.x + up * uv.y;
+                return Ray(pos, normalize(img - pos));
+            }
+
+            vec3 renderStar(Ray r, vec3 p, float brightness, vec3 color) {
+                vec3 op = p - r.o;
+                float t = dot(op, r.d);
+                if (t < 0.0) return vec3(0.0);
+                vec3 closest = r.o + r.d * t - p;
+                float d2 = dot(closest, closest);
+                // 별의 크기를 약 2배로 확장
+                float size = 0.08 + 0.36 * sqrt(brightness);
+                float s2 = size * size;
+                if (d2 > s2 * 800.0) return vec3(0.0);
+                float core = CORE_GAIN * brightness / (d2 / s2 + 0.01);
+                float halo = HALO_GAIN * brightness / (d2 / (s2 * 15.0) + 0.05);
+                return color * (core + halo);
+            }
+
+            void main() {
+                vec2 uv = (vUv - 0.5) * vec2(iResolution.x / iResolution.y, 1.0);
+                float time = iTime * ORBIT_SPEED;
+                vec3 galX = normalize(GAL_CENTER - GAL_NORTH * dot(GAL_CENTER, GAL_NORTH));
+                vec3 galY = normalize(cross(GAL_NORTH, galX));
+                float a = time * 0.35;
+                vec3 planeDir = normalize(cos(a) * galX + sin(a) * galY);
+                vec3 camPos = planeDir * ORBIT_RADIUS + planeDir * sin(iTime * 0.1) * 2.0;
+                vec3 lookAt = CLUSTER_CENTER + planeDir * ORBIT_RADIUS * 0.35;
+                Ray r = setupCamera(uv, camPos, lookAt, CAMERA_ZOOM, WORLD_UP);
+                
+                vec3 col = vec3(0.005, 0.005, 0.01);
+                for (int i = 0; i < 30; i++) {
+                    col += renderStar(r, getStarPos(i), 0.5, getStarColor(i));
+                }
+                col *= EXPOSURE;
+                gl_FragColor = vec4(col / (col + 1.25), 1.0);
+            }
+        `;
+
+        try {
+            init();
+            animate();
+        } catch (e) {
+            console.error("Critical Initialization Error:", e);
+        }
+
+        function init() {
+            // [1. 배경 레이어 (가장 뒤)]
+            bgScene = new THREE.Scene();
+            bgCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+            bgRenderer = new THREE.WebGLRenderer({ antialias: true });
+            bgRenderer.setPixelRatio(window.devicePixelRatio);
+            bgRenderer.setSize(window.innerWidth, window.innerHeight);
+            bgRenderer.domElement.style.position = 'absolute';
+            bgRenderer.domElement.style.top = '0';
+            bgRenderer.domElement.style.left = '0';
+            bgRenderer.domElement.style.zIndex = '0';
+            document.body.appendChild(bgRenderer.domElement);
+
+            bgMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    iTime: { value: 0 },
+                    iResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+                },
+                vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
+                fragmentShader: pleiadesFragmentShader,
+                depthWrite: false
+            });
+            const bgPlane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMaterial);
+            bgPlane.position.z = -0.5; // 카메라 클리핑 방지
+            bgScene.add(bgPlane);
+
+            // [2. 메시지 레이어 (중간)]
+            labelRenderer = new CSS2DRenderer();
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = '0';
+            labelRenderer.domElement.style.left = '0';
+            labelRenderer.domElement.style.zIndex = '5';
+            labelRenderer.domElement.style.pointerEvents = 'none';
+            document.body.appendChild(labelRenderer.domElement);
+
+            // [3. 구체 레이어 (가장 앞)]
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 3000);
+            camera.position.z = 300; // 카메라를 약간 뒤로 빼서 더 넓은 시야 확보
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000, 0); // 배경 투명 처리
+            renderer.domElement.id = 'main-webgl-canvas'; // CSS 선택용 ID 부여
+            renderer.domElement.style.position = 'absolute';
+            renderer.domElement.style.top = '0';
+            renderer.domElement.style.left = '0';
+            renderer.domElement.style.zIndex = '10';
+            renderer.domElement.style.pointerEvents = 'none';
+            document.body.appendChild(renderer.domElement);
+
+            const renderPass = new RenderPass(scene, camera);
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.8);
+            
+            // [FIX] Bloom 적용 시 알파 채널 유지를 위한 설정
+            const renderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+                format: THREE.RGBAFormat
+            });
+            composer = new EffectComposer(renderer, renderTarget);
+            composer.addPass(renderPass);
+            composer.addPass(bloomPass);
+
+            setupSocket();
+            setupBGM();
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function setupBGM() {
+            const bgm = document.getElementById('bgm');
+            const startHandler = () => {
+                bgm.play().catch(e => console.log("Audio blocked"));
+            };
+            document.body.addEventListener('click', startHandler, { once: true });
+        }
+
+        function createGlowTexture(color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, color.getStyle());
+            gradient.addColorStop(0.5, color.getStyle().replace('rgb', 'rgba').replace(')', ',0.3)'));
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 64, 64);
+            const tex = new THREE.CanvasTexture(canvas);
+            return tex;
+        }
+
+        class FXParticle {
+            constructor(pos, color, velocity, size = 1.5, life = 1.0) {
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0]), 3));
+                const material = new THREE.PointsMaterial({
+                    map: createGlowTexture(color),
+                    size: size * 10,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                    opacity: 1.0
+                });
+                this.mesh = new THREE.Points(geometry, material);
+                this.mesh.position.copy(pos);
+                this.velocity = velocity.clone();
+                this.maxLife = life;
+                this.life = life;
+                if (fxParticles.length < MAX_FX_PARTICLES) {
+                    scene.add(this.mesh);
+                }
+            }
+            update(delta) {
+                this.life -= delta;
+                this.mesh.position.add(this.velocity.clone().multiplyScalar(delta));
+                this.mesh.material.opacity = Math.max(0, this.life / this.maxLife);
+                if (this.life <= 0) {
+                    scene.remove(this.mesh);
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        class Firefly {
+            constructor(data) {
+                this.data = data;
+                this.color = new THREE.Color(data.color || 0x00ffff);
+                this.birthTime = Date.now();
+                this.waitTimer = 1.0;
+                this.phase = 'WAITING';
+                this.progress = 0;
+                this.lifeScale = 1.0;
+                
+                // [NEW] 개별 랜덤 움직임 파라미터
+                this.floatOffset = Math.random() * Math.PI * 2;
+                this.floatSpeedMultiplier = 0.5 + Math.random() * 1.0; // 개별 편차
+                this.floatAmplitude = new THREE.Vector3(
+                    15 + Math.random() * 10, // X 진폭
+                    20 + Math.random() * 15, // Y 진폭
+                    10 + Math.random() * 10  // Z 진폭
+                );
+
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0]), 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array([this.color.r, this.color.g, this.color.b]), 3));
+                geometry.setAttribute('size', new THREE.BufferAttribute(new Float32Array([15.0]), 1));
+
+                this.material = new THREE.ShaderMaterial({
+                    vertexShader: fireflyVertexShader,
+                    fragmentShader: fireflyFragmentShader,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+
+                this.mesh = new THREE.Points(geometry, this.material);
+                this.mesh.visible = false;
+
+                const side = Math.random() > 0.5 ? 1 : -1;
+                this.startPos = new THREE.Vector3(config.spawnRangeX * side, (Math.random() - 0.5) * 150, (Math.random() - 0.5) * 50);
+                
+                // [FIX] 메시지 뭉침 방지: 분산 범위 대폭 확대 및 거리 체크 강화
+                const margin = 50;
+                let bestTarget = null;
+                let maxDist = -1;
+                for (let i = 0; i < 30; i++) { // 시도 횟수 증가
+                    const tx = side === 1 ? -(margin + Math.random() * (config.displayZone.w - margin)) : (margin + Math.random() * (config.displayZone.w - margin));
+                    const ty = (Math.random() - 0.5) * config.displayZone.h;
+                    const tz = (Math.random() - 0.5) * config.displayZone.d;
+                    const candidate = new THREE.Vector3(tx, ty, tz);
+                    
+                    let minDistToExisting = 2000;
+                    fireflies.forEach(f => {
+                        const d = f.targetPos.distanceTo(candidate);
+                        if (d < minDistToExisting) minDistToExisting = d;
+                    });
+                    
+                    if (minDistToExisting > maxDist) {
+                        maxDist = minDistToExisting;
+                        bestTarget = candidate;
+                    }
+                    if (maxDist > 150) break; // 충분히 멀면 조기 종료
+                }
+                this.targetPos = bestTarget;
+                this.mesh.position.copy(this.startPos);
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'message-label-wrapper';
+                const div = document.createElement('div');
+                div.className = 'message-label';
+                div.textContent = data.content;
+                div.style.color = data.color;
+                div.style.boxShadow = `0 0 40px ${data.color}44`;
+                div.style.borderTop = `2px solid ${data.color}`;
+                wrapper.appendChild(div);
+                this.div = div;
+                this.label = new CSS2DObject(wrapper);
+                
+                // [FIX] 최신 메시지 zIndex 우선순위 부여
+                this.label.element.style.zIndex = ++globalIdCounter;
+
+                scene.add(this.mesh);
+                scene.add(this.label);
+                fireflyMap.set(data.id, this); 
+                this.mesh.renderOrder = 999;
+            }
+
+            update(delta, time) {
+                if (this.phase === 'WAITING') {
+                    this.waitTimer -= delta;
+                    if (this.waitTimer <= 0) { this.phase = 'FLYING'; this.mesh.visible = true; }
+                    return;
+                }
+                if (this.phase === 'FLYING') {
+                    this.progress += delta * 0.12;
+                    const pos = new THREE.Vector3().lerpVectors(this.startPos, this.targetPos, this.progress);
+                    pos.y += Math.sin(time * 2 + this.birthTime * 0.001) * 30;
+                    pos.x += Math.cos(time * 1.5) * 20;
+                    this.mesh.position.copy(pos);
+                    this.label.position.copy(pos);
+                    const s = THREE.MathUtils.lerp(300, 80, Math.min(this.progress * 2, 1));
+                    this.mesh.geometry.attributes.size.array[0] = s;
+                    this.mesh.geometry.attributes.size.needsUpdate = true;
+
+                    if (this.progress >= 1.0) {
+                        this.phase = 'POPPING';
+                        this.popTime = 0;
+                        for (let i = 0; i < 60; i++) {
+                            const vel = new THREE.Vector3((Math.random() - 0.5) * 120, (Math.random() - 0.5) * 120, (Math.random() - 0.5) * 120);
+                            fxParticles.push(new FXParticle(this.mesh.position, this.color, vel, 2.5, 1.2));
+                        }
+                    }
+                    if (Math.random() > 0.1) {
+                        const vel = new THREE.Vector3((Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15);
+                        fxParticles.push(new FXParticle(this.mesh.position, this.color, vel, 1.5, 1.2));
+                    }
+                } else if (this.phase === 'POPPING') {
+                    this.popTime += delta;
+                    const s = THREE.MathUtils.lerp(80, 800, this.popTime * 3);
+                    this.mesh.geometry.attributes.size.array[0] = s;
+                    this.mesh.geometry.attributes.size.needsUpdate = true;
+                    if (this.popTime > 0.3) {
+                        this.phase = 'DISPLAY';
+                        this.div.classList.add('visible');
+                        this.mesh.visible = false;
+                    }
+                } else if (this.phase === 'DISPLAY') {
+                    // [NEW] 10분 수명 체크: 시간이 지나면 자동 삭제
+                    if (Date.now() - this.birthTime > MESSAGE_LIFE_MS) {
+                        removeFirefly(this);
+                        fireflies = fireflies.filter(f => f !== this);
+                        return;
+                    }
+
+                    // [FIX] 메시지 랜덤 부유(Floating) 로직 강화 (글로벌 속도 설정 반영)
+                    const t = time * config.floatSpeed * this.floatSpeedMultiplier + this.floatOffset;
+                    
+                    // 기본 위치에서 사인파 조합으로 부드럽게 랜덤 워크
+                    this.mesh.position.x = this.targetPos.x + Math.sin(t * 0.7) * this.floatAmplitude.x;
+                    this.mesh.position.y = this.targetPos.y + Math.cos(t * 0.8) * this.floatAmplitude.y + Math.sin(t * 1.2) * 10;
+                    this.mesh.position.z = this.targetPos.z + Math.sin(t * 0.5) * this.floatAmplitude.z;
+                    
+                    this.label.position.copy(this.mesh.position);
+                    this.div.style.transform = `scale(${this.lifeScale * 1.5})`;
+                    this.div.style.opacity = 1;
+                }
+            }
+        }
+
+        async function setupSocket() {
+            try {
+                const { io } = await import("https://cdn.socket.io/4.7.2/socket.io.esm.min.js");
+                const socket = io();
+
+                // [FIX] 초기 메시지 히스토리 동기화 추가
+                socket.on('init_messages', (history) => {
+                    console.log("📜 히스토리 동기화 중...", history.length);
+                    history.forEach(msg => {
+                        if (!fireflyMap.has(msg.id)) {
+                            const f = new Firefly(msg);
+                            fireflies.push(f);
+                        }
+                    });
+                    trimMessages();
+                });
+
+                socket.on('new_message', (msg) => {
+                    const f = new Firefly(msg);
+                    fireflies.push(f);
+                    trimMessages();
+                });
+
+                function trimMessages() {
+                    if (fireflies.length > config.maxMessages) {
+                        const countToRemove = fireflies.length - config.maxMessages;
+                        for(let i=0; i<countToRemove; i++) {
+                            const oldest = fireflies.shift();
+                            removeFirefly(oldest);
+                        }
+                    }
+                    updateMessageScales();
+                }
+
+                function updateMessageScales() {
+                    fireflies.forEach((obj, idx) => {
+                        const ageIdx = fireflies.length - 1 - idx;
+                        obj.lifeScale = Math.pow(Math.max(0, 1.0 - (ageIdx / (config.maxMessages - 1 || 1))), 0.6);
+                    });
+                }
+
+                socket.on('mobile_config_update', (newMobileConfig) => {
+                    console.log('⚙️ 설정 수신:', newMobileConfig);
+                    if (newMobileConfig && newMobileConfig.exhibitionConfig) {
+                        const ex = newMobileConfig.exhibitionConfig;
+                        
+                        // [FIX] 설정값 강제 형변환 및 즉시 할당
+                        config.maxMessages = parseInt(ex.maxMessages) || 30;
+                        config.density = parseFloat(ex.density) || 1.0;
+                        config.floatSpeed = parseFloat(ex.floatSpeed) || 0.5;
+                        
+                        // 구역 크기 업데이트
+                        config.displayZone.w = 450 * config.density;
+                        config.displayZone.h = 280 * config.density;
+                        
+                        // [FIX] 설정 변경 즉시 메시지 수량 제한 반영
+                        trimMessages();
+
+                        const qrImgBox = document.getElementById('qr-image-center');
+                        if (ex.qrImageUrl) {
+                            qrImgBox.innerHTML = `<img src="${ex.qrImageUrl}" alt="QR">`;
+                        } else {
+                            qrImgBox.innerHTML = '<div id="qr-auto-gen"></div>';
+                            new QRCode(document.getElementById('qr-auto-gen'), {
+                                text: window.location.origin + "/mobile",
+                                width: 150,
+                                height: 150
+                            });
+                        }
+                        console.log('⚙️ 설정 동기화:', config);
+                    }
+                });
+
+                // 메시지 삭제 수신
+                socket.on('remove_message', (messageId) => {
+                    const f = fireflyMap.get(messageId);
+                    if (f) {
+                        // 리스트에서도 제거
+                        fireflies = fireflies.filter(item => item !== f);
+                        removeFirefly(f);
+                    }
+                });
+                
+                // 전체 화면 초기화 수신
+                socket.on('clear_screen', () => {
+                    fireflies.forEach(f => {
+                        scene.remove(f.mesh);
+                        scene.remove(f.label);
+                    });
+                    fireflies = [];
+                    fireflyMap.clear();
+                    console.log('🧹 화면 초기화 완료');
+                });
+
+                function removeFirefly(f) {
+                    scene.remove(f.mesh);
+                    scene.remove(f.label);
+                    fireflyMap.delete(f.data.id);
+                }
+
+                window.debug_addMessage = (text, color) => {
+                    const msg = {
+                        content: text || "테세트 메시지입니다.",
+                        color: color || "#00ffff"
+                    };
+                    const f = new Firefly(msg);
+                    fireflies.push(f);
+                    if (fireflies.length > config.maxMessages) {
+                        const oldest = fireflies.shift();
+                        scene.remove(oldest.mesh);
+                        scene.remove(oldest.label);
+                    }
+                    return f;
+                };
+            } catch (e) { console.error("Socket error", e); }
+        }
+
+        window.Firefly = Firefly;
+        let lastTime = performance.now();
+        function animate() {
+            requestAnimationFrame(animate);
+            const currentTime = performance.now();
+            const delta = Math.min((currentTime - lastTime) / 1000, 0.1); 
+            lastTime = currentTime;
+            const elapsed = currentTime / 1000;
+            
+            if (bgMaterial) bgMaterial.uniforms.iTime.value = elapsed;
+            if (bgRenderer) bgRenderer.render(bgScene, bgCamera);
+
+            // [FIX] 루프 도중 배열 수정 방지를 위한 복사본 사용
+            const currentFireflies = [...fireflies];
+            currentFireflies.forEach(f => f.update(delta, elapsed));
+            
+            fxParticles = fxParticles.filter(p => p.update(delta));
+
+            if (composer) composer.render();
+            if (labelRenderer) labelRenderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            
+            renderer.setSize(w, h);
+            if (bgRenderer) bgRenderer.setSize(w, h);
+            labelRenderer.setSize(w, h);
+            if (composer) composer.setSize(w, h);
+            if (bgMaterial) bgMaterial.uniforms.iResolution.value.set(w, h);
+        }
+
+        // [QR 코드 생성 로직 - 양방향/고정 배포용]
+        function setupQR() {
+            try {
+                // 현재 접속 경로 기준 자동 설정 (localhost 면 localhost, 도메인이면 도메인을 잡습니다)
+                const targetUrl = window.location.origin + "/mobile";
+                
+                const boxes = ["qr-code-left", "qr-code-right"];
+                boxes.forEach(id => {
+                    const container = document.getElementById(id);
+                    if (!container) return;
+                    
+                    new QRCode(container, {
+                        text: targetUrl,
+                        width: 110,
+                        height: 110,
+                        colorDark : "#000000",
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
+                });
+                
+                console.log("Dual QR Gateways initialized for:", targetUrl);
+            } catch (e) { console.error("QR Generation failed", e); }
+        }
+        setupQR();
+    </script>
+</body>
+
+</html>

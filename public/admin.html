@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기원의 나무: 관리자 패널</title>
+    <style>
+        body {
+            margin: 0; padding: 20px; background: #0a0a0f; color: #fff;
+            font-family: 'Pretendard', sans-serif;
+        }
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;
+        }
+        h1 { font-size: 1.2rem; color: #00ffff; margin: 0; }
+        .login-box {
+            max-width: 400px; margin: 100px auto; text-align: center;
+            background: #15151a; padding: 40px; border-radius: 20px; border: 1px solid #333;
+        }
+        input {
+            width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px;
+            border: 1px solid #333; background: #000; color: #fff; box-sizing: border-box;
+        }
+        button {
+            width: 100%; padding: 12px; margin-top: 10px; border-radius: 10px;
+            border: none; background: #00ffff; color: #000; font-weight: bold; cursor: pointer;
+        }
+        .reset-btn {
+            background: #ffaa00; color: #000; border: none; padding: 12px 20px;
+            border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%;
+        }
+        .config-section {
+            background: #15151a; border: 1px solid #333; border-radius: 15px;
+            padding: 20px; margin-top: 20px; text-align: left;
+        }
+        .config-group { margin-bottom: 15px; }
+        .config-group label { display: block; font-size: 0.8rem; color: #888; margin-bottom: 5px; }
+        .config-group input { 
+            width: 100%; padding: 10px; background: #000; border: 1px solid #444; 
+            color: #fff; border-radius: 5px; box-sizing: border-box;
+        }
+        .message-list { display: none; max-width: 600px; margin: 0 auto; }
+        .message-item {
+            background: #15151a; border: 1px solid #333; border-radius: 12px;
+            padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .msg-content { flex: 1; margin-right: 15px; }
+        .msg-text { font-size: 1rem; margin-bottom: 5px; }
+        .msg-meta { font-size: 0.8rem; color: rgba(255,255,255,0.4); }
+        .del-btn {
+            background: #ff4444; color: #fff; border: none; padding: 8px 15px;
+            border-radius: 6px; cursor: pointer; font-size: 0.8rem; width: auto;
+        }
+        #logout-btn { background: rgba(255,255,255,0.1); color: #fff; width: auto; padding: 5px 15px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div id="login-view" class="login-box">
+        <h1>Admin Login</h1>
+        <p style="color: rgba(255,255,255,0.5); font-size: 0.9rem;">관리자 비밀번호를 입력하세요.</p>
+        <input type="password" id="admin-pass" placeholder="Password">
+        <button id="login-btn">접속하기</button>
+    </div>
+
+    <div id="admin-view" class="message-list">
+        <div class="header">
+            <h1>메시지 관리 패널</h1>
+            <div style="display:flex; gap:10px;">
+                <button id="refresh-config-btn" style="background:#ffaa00; color:#000; width:auto; padding:5px 15px; font-size:0.8rem;">🔄 설정 새로고침</button>
+                <button id="logout-btn">로그아웃</button>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h2 style="margin-top:0; font-size:1.1rem; color:#00ffff;">🖼️ 전시장 화면 설정</h2>
+            <div class="config-group">
+                <label>최대 메시지 개수 (현재 30개 권장)</label>
+                <input type="number" id="cfg-maxMessages" min="1" max="100">
+            </div>
+            <div class="config-group">
+                <label>메시지 밀집도 (0.5 ~ 2.0 사이 권장, 작을수록 밀집됨)</label>
+                <input type="number" id="cfg-density" step="0.1" min="0.1" max="5.0">
+            </div>
+            <div class="config-group">
+                <label>중앙 QR 이미지 경로 (이미지 파일 준비 후 경로 입력)</label>
+                <input type="text" id="cfg-qrImageUrl" placeholder="예: /assets/qr-center.png">
+            </div>
+            <div class="config-group">
+                <label>메시지 부유 속도 (0.1 ~ 2.0 사이 권장, 기본 0.5)</label>
+                <input type="number" id="cfg-floatSpeed" step="0.1" min="0.1" max="5.0">
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h2 style="margin-top:0; font-size:1.1rem; color:#ff00ff;">📱 모바일 페이지 문구 설정</h2>
+            <div class="config-group">
+                <label>메인 제목</label>
+                <input type="text" id="cfg-title">
+            </div>
+            <div class="config-group">
+                <label>상세 안내문</label>
+                <input type="text" id="cfg-description">
+            </div>
+            <div class="config-group">
+                <label>입력창 힌트 (Placeholder)</label>
+                <input type="text" id="cfg-placeholder">
+            </div>
+            <div class="config-group">
+                <label>송출 버튼 문구</label>
+                <input type="text" id="cfg-sendBtn">
+            </div>
+            <div class="config-group">
+                <label>성공 화면 제목</label>
+                <input type="text" id="cfg-successTitle">
+            </div>
+            <div class="config-group">
+                <label>성공 화면 설명 (HTML 가능)</label>
+                <input type="text" id="cfg-successDesc">
+            </div>
+            <div class="config-group">
+                <label>다시쓰기 버튼 문구</label>
+                <input type="text" id="cfg-resetBtn">
+            </div>
+            <div class="config-group">
+                <label>🚫 금지어 설정 (쉼표로 구분)</label>
+                <textarea id="cfg-badWords" style="width:100%; height:80px; background:#000; color:#fff; border:1px solid #444; border-radius:5px; padding:10px; box-sizing:border-box; resize:vertical;"></textarea>
+            </div>
+            <button id="save-config-btn" style="background:#00ffff; color:#000; padding:10px; border:none; border-radius:5px; font-weight:bold; width:100%; cursor:pointer;">💾 설정 저장 및 실시간 적용</button>
+        </div>
+
+        <button id="master-reset-btn" class="reset-btn">🧹 전시장 화면 전체 초기화</button>
+        <div id="list-container" style="margin-top: 20px;">
+            <!-- 메시지 아이템이 여기 추가됨 -->
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        socket.on('connect', () => {
+            console.log('📡 서버와 연결됨 (Socket ID:', socket.id, ')');
+        });
+
+        // [중요] 설정 수신 리스너를 가장 먼저 등록!
+        socket.on('mobile_config_update', (config) => {
+            console.log('✅ 모바일 설정 데이터 도착:', config);
+            if (!config) {
+                console.error('❌ 수신된 설정 데이터가 비어있습니다.');
+                return;
+            }
+            
+            const fields = {
+                'cfg-title': config.title,
+                'cfg-description': config.description,
+                'cfg-placeholder': config.placeholder,
+                'cfg-sendBtn': config.sendBtn,
+                'cfg-successTitle': config.successTitle,
+                'cfg-successDesc': config.successDesc,
+                'cfg-resetBtn': config.resetBtn,
+                'cfg-badWords': (config.badWords || []).join(', '),
+                'cfg-maxMessages': config.exhibitionConfig?.maxMessages || 30,
+                'cfg-density': config.exhibitionConfig?.density || 1.0,
+                'cfg-qrImageUrl': config.exhibitionConfig?.qrImageUrl || '',
+                'cfg-floatSpeed': config.exhibitionConfig?.floatSpeed || 0.5
+            };
+
+            for (const [id, value] of Object.entries(fields)) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.value = value || '';
+                    console.log(`  > ${id} 업데이트 완료`);
+                } else {
+                    console.warn(`  > ⚠️ ID를 찾을 수 없음: ${id}`);
+                }
+            }
+        });
+
+        let password = "";
+        const loginView = document.getElementById('login-view');
+        const adminView = document.getElementById('admin-view');
+        const listContainer = document.getElementById('list-container');
+
+        document.getElementById('login-btn').addEventListener('click', () => {
+            password = document.getElementById('admin-pass').value;
+            loginView.style.display = 'none';
+            adminView.style.display = 'block';
+            
+            console.log('🔑 로그인 시도 - 데이터 동기화 요청');
+            socket.emit('request_mobile_config');
+            socket.emit('get_init_messages');
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            location.reload();
+        });
+
+        document.getElementById('master-reset-btn').addEventListener('click', () => {
+            if (confirm('⚠️ 정말로 전시장 화면의 모든 메시지를 삭제하시겠습니까?\n(구글 시트 데이터는 보존됩니다)')) {
+                socket.emit('reset_messages', { password });
+            }
+        });
+
+        document.getElementById('refresh-config-btn').addEventListener('click', () => {
+            console.log('🔄 수동 설정 새로고침 요청');
+            socket.emit('request_mobile_config');
+        });
+
+        // 모바일 설정 저장
+        document.getElementById('save-config-btn').addEventListener('click', () => {
+            const newConfig = {
+                title: document.getElementById('cfg-title').value,
+                description: document.getElementById('cfg-description').value,
+                placeholder: document.getElementById('cfg-placeholder').value,
+                sendBtn: document.getElementById('cfg-sendBtn').value,
+                successTitle: document.getElementById('cfg-successTitle').value,
+                successDesc: document.getElementById('cfg-successDesc').value,
+                resetBtn: document.getElementById('cfg-resetBtn').value,
+                badWords: document.getElementById('cfg-badWords').value.split(',').map(s => s.trim()).filter(s => s),
+                exhibitionConfig: {
+                    maxMessages: parseInt(document.getElementById('cfg-maxMessages').value) || 30,
+                    density: parseFloat(document.getElementById('cfg-density').value) || 1.0,
+                    qrImageUrl: document.getElementById('cfg-qrImageUrl').value,
+                    floatSpeed: parseFloat(document.getElementById('cfg-floatSpeed').value) || 0.5
+                }
+            };
+            socket.emit('update_mobile_config', { password, newConfig });
+            alert('⚙️ 모바일 설정이 저장되고 실시간으로 반영되었습니다!');
+        });
+
+        // 초기 메시지 로드
+        socket.on('init_messages', (messages) => {
+            console.log('✅ 메시지 히스토리 수신 완료:', messages.length, '건');
+            listContainer.innerHTML = '';
+            messages.slice().reverse().forEach(msg => addMessageToList(msg));
+        });
+
+        // 새 메시지 수신
+        socket.on('new_message', (msg) => {
+            addMessageToList(msg, true);
+        });
+
+        // 메시지가 다른 관리자에 의해 삭제된 경우
+        socket.on('remove_message', (messageId) => {
+            const el = document.getElementById(`msg-${messageId}`);
+            if (el) el.remove();
+        });
+
+        socket.on('admin_error', (err) => {
+            alert(err);
+        });
+
+        function addMessageToList(msg, isNew = false) {
+            const item = document.createElement('div');
+            item.className = 'message-item';
+            item.id = `msg-${msg.id}`;
+            item.innerHTML = `
+                <div class="msg-content">
+                    <div class="msg-text" style="color: ${msg.color}">${msg.content}</div>
+                    <div class="msg-meta">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+                </div>
+                <button class="del-btn" data-id="${msg.id}">삭제</button>
+            `;
+            
+            if (isNew) {
+                listContainer.prepend(item);
+            } else {
+                listContainer.appendChild(item);
+            }
+
+            item.querySelector('.del-btn').addEventListener('click', (e) => {
+                const id = e.target.dataset.id;
+                if (confirm('이 메시지를 삭제하시겠습니까?')) {
+                    socket.emit('delete_message', { messageId: parseInt(id), password });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

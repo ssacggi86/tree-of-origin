@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기원의 나무 V3.5: Mystic Solitude</title>
+    <style>
+        body { margin: 0; background: #000; color: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
+        canvas { display: block; }
+        
+        /* [메시지 카드 디자인: 에코-사이버 글래스모피즘] */
+        .message-label {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 8px;
+            padding: 12px 18px;
+            color: #e0fbf9;
+            font-size: 15px;
+            font-weight: 500;
+            max-width: 220px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 255, 204, 0.1);
+            pointer-events: none;
+            transition: all 0.8s ease-in-out;
+            animation: floating 4s ease-in-out infinite;
+            white-space: pre-wrap;
+            word-break: keep-all;
+            line-height: 1.4;
+        }
+
+        @keyframes floating {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(1deg); }
+        }
+
+        #festival-text {
+            position: absolute; top: 30px; left: 40px;
+            color: rgba(0, 255, 204, 0.6); font-size: 20px; font-weight: 300;
+            letter-spacing: 5px; z-index: 10; text-transform: uppercase;
+        }
+
+        #status-bar {
+            position: absolute; bottom: 20px; right: 30px;
+            font-size: 10px; color: rgba(255, 255, 255, 0.3); letter-spacing: 2px;
+            z-index: 10;
+        }
+
+        #error-report {
+            position: absolute; top: 0; left: 0; width: 100%; padding: 10px;
+            background: rgba(255, 0, 0, 0.5); display: none; z-index: 9999;
+            text-align: center; color: white; font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div id="error-report"></div>
+    <div id="festival-text">Tree of Origin</div>
+    <div id="status-bar">ENGINE: 3.5_MYSTIC_SOUL | DATA_ACCUMULATION: ACTIVE</div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { RectAreaLightHelper } from 'three/addons/helpers/RectAreaLightHelper.js';
+        import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+
+        // --- [설정값] ---
+        const config = {
+            treeUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/StainedGlassLamp/glTF-Binary/StainedGlassLamp.glb', // 고목 느낌의 임시 복잡 모델
+            maxLeaves: 100,
+            fogColor: 0x000000,
+            primaryColor: 0x00ffcc
+        };
+
+        let scene, camera, renderer, labelRenderer, composer, tree, controls;
+        let leaves = [], clock = new THREE.Clock();
+
+        init();
+        animate();
+
+        async function init() {
+            RectAreaLightUniformsLib.init();
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            scene.fog = new THREE.FogExp2(config.fogColor, 0.003);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.set(0, 40, 120);
+
+            // [렌더러 세팅]
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            labelRenderer = new CSS2DRenderer();
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = '0px';
+            labelRenderer.domElement.style.pointerEvents = 'none';
+            document.body.appendChild(labelRenderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+
+            // [시네마틱 라이팅]
+            const ambient = new THREE.AmbientLight(0xffffff, 0.1);
+            scene.add(ambient);
+
+            // 1. Top Spotlight (천상의 빛)
+            const spotLight = new THREE.SpotLight(0x00ffcc, 150, 300, Math.PI / 6, 0.5, 1);
+            spotLight.position.set(0, 150, 50);
+            spotLight.castShadow = true;
+            spotLight.shadow.mapSize.width = 1024;
+            spotLight.shadow.mapSize.height = 1024;
+            scene.add(spotLight);
+
+            // 2. RectAreaLight (뿌리 광원)
+            const rectLight = new THREE.RectAreaLight(0x00ffcc, 5, 100, 100);
+            rectLight.position.set(0, -2, 0);
+            rectLight.rotation.x = THREE.MathUtils.degToRad(-90);
+            scene.add(rectLight);
+
+            // [포스트 프로세싱: 신비로운 Bloom]
+            const renderPass = new RenderPass(scene, camera);
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.4, 0.85);
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderPass);
+            composer.addPass(bloomPass);
+
+            // [고목 모델 로딩]
+            const loader = new GLTFLoader();
+            loader.load(config.treeUrl, (gltf) => {
+                tree = gltf.scene;
+                tree.traverse(n => {
+                    if (n.isMesh) {
+                        n.castShadow = true;
+                        n.receiveShadow = true;
+                        // 고목 느낌을 위한 어두운 머티리얼 튜닝
+                        if (n.material) {
+                            n.material.roughness = 0.8;
+                            n.material.metalness = 0.2;
+                        }
+                    }
+                });
+                tree.position.y = -5;
+                tree.scale.set(40, 40, 40);
+                scene.add(tree);
+                console.log("Mystic Tree Loaded.");
+            });
+
+            setupSocket();
+        }
+
+        function createLeaf(data) {
+            const group = new THREE.Group();
+            
+            // 1. 빛의 입자 (Leaf Node)
+            const sphereGeom = new THREE.SphereGeometry(1, 8, 8);
+            const sphereMat = new THREE.MeshBasicMaterial({ color: data.color || 0x00ffcc });
+            const sphere = new THREE.Mesh(sphereGeom, sphereMat);
+            group.add(sphere);
+
+            // 나무 주변 랜덤 배치 (위쪽 가지 방향으로)
+            const radius = 40 + Math.random() * 50;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI * 0.5;
+            
+            group.position.set(
+                radius * Math.sin(phi) * Math.cos(theta),
+                10 + Math.random() * 80,
+                radius * Math.sin(phi) * Math.sin(theta)
+            );
+
+            // 2. 메시지 라벨 (CSS2D)
+            const div = document.createElement('div');
+            div.className = 'message-label';
+            div.textContent = data.content || "...";
+            div.style.borderLeft = `4px solid ${data.color || '#00ffcc'}`;
+            
+            const label = new CSS2DObject(div);
+            label.position.set(0, 10, 0);
+            group.add(label);
+
+            scene.add(group);
+            leaves.push({ group, div, time: Date.now() });
+
+            // [누적 관리 및 소멸 로직]
+            if (leaves.length > config.maxLeaves) {
+                const oldest = leaves.shift();
+                oldest.div.style.opacity = '0';
+                oldest.div.style.transform = 'scale(0.8)';
+                setTimeout(() => scene.remove(oldest.group), 800);
+            }
+        }
+
+        async function setupSocket() {
+            try {
+                const { io } = await import("https://cdn.socket.io/4.7.2/socket.io.esm.min.js");
+                const socket = io();
+                socket.on('init_messages', (history) => {
+                    history.forEach(msg => createLeaf(msg));
+                });
+                socket.on('new_message', (msg) => {
+                    createLeaf(msg);
+                });
+            } catch (e) {
+                console.warn("Socket connection failed. Static mode.");
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            if (controls) controls.update();
+            if (composer) composer.render();
+            if (labelRenderer) labelRenderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
