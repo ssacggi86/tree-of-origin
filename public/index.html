@@ -575,11 +575,11 @@
                 const side = Math.random() > 0.5 ? 1 : -1;
                 this.startPos = new THREE.Vector3(config.spawnRangeX * side, (Math.random() - 0.5) * 150, (Math.random() - 0.5) * 50);
                 
-                // [FIX] 메시지 뭉침 방지: 분산 범위 대폭 확대 및 거리 체크 강화
+                // [FIX] 메시지 뭉침 방지: 분산 범위 최적화 및 연산 부하 경감
                 const margin = 50;
                 let bestTarget = null;
                 let maxDist = -1;
-                for (let i = 0; i < 30; i++) { // 시도 횟수 증가
+                for (let i = 0; i < 15; i++) { // 시도 횟수 최적화 (15회)
                     const tx = side === 1 ? -(margin + Math.random() * (config.displayZone.w - margin)) : (margin + Math.random() * (config.displayZone.w - margin));
                     const ty = (Math.random() - 0.5) * config.displayZone.h;
                     const tz = (Math.random() - 0.5) * config.displayZone.d;
@@ -595,9 +595,9 @@
                         maxDist = minDistToExisting;
                         bestTarget = candidate;
                     }
-                    if (maxDist > 150) break; // 충분히 멀면 조기 종료
+                    if (maxDist > 120) break; // 충분히 멀면 조기 종료
                 }
-                this.targetPos = bestTarget;
+                this.targetPos = bestTarget || new THREE.Vector3(0, 0, 0); // fallback
                 this.mesh.position.copy(this.startPos);
 
                 const wrapper = document.createElement('div');
@@ -688,34 +688,32 @@
                 const { io } = await import("https://cdn.socket.io/4.7.2/socket.io.esm.min.js");
                 const socket = io();
 
-                // [FIX] 초기 메시지 히스토리 동기화 추가
+                // [FIX] 초기 메시지 히스토리 동기화 최적화 (대량 생성으로 인한 멈춤 방지)
                 socket.on('init_messages', (history) => {
-                    console.log("📜 히스토리 동기화 중...", history.length);
-                    history.forEach(msg => {
+                    console.log("📜 히스토리 동기화 중 (최근 것만 추출)...", history.length);
+                    // 설정된 최대 개수만큼만 뒤에서 잘라냄
+                    const limitedHistory = history.slice(-config.maxMessages);
+                    
+                    limitedHistory.forEach(msg => {
                         if (!fireflyMap.has(msg.id)) {
                             const f = new Firefly(msg);
                             fireflies.push(f);
                         }
                     });
-                    trimMessages();
+                    updateMessageScales();
                 });
 
                 socket.on('new_message', (msg) => {
+                    // [FIX] 선(先) 삭제 후(後) 생성 로직: 꽉 찼으면 미리 공간 확보
+                    if (fireflies.length >= config.maxMessages) {
+                        const oldest = fireflies.shift();
+                        removeFirefly(oldest);
+                    }
+                    
                     const f = new Firefly(msg);
                     fireflies.push(f);
-                    trimMessages();
-                });
-
-                function trimMessages() {
-                    if (fireflies.length > config.maxMessages) {
-                        const countToRemove = fireflies.length - config.maxMessages;
-                        for(let i=0; i<countToRemove; i++) {
-                            const oldest = fireflies.shift();
-                            removeFirefly(oldest);
-                        }
-                    }
                     updateMessageScales();
-                }
+                });
 
                 function updateMessageScales() {
                     fireflies.forEach((obj, idx) => {
@@ -739,6 +737,13 @@
                         config.displayZone.h = 280 * config.density;
                         
                         // [FIX] 설정 변경 즉시 메시지 수량 제한 반영
+                        function trimMessages() {
+                            while (fireflies.length > config.maxMessages) {
+                                const oldest = fireflies.shift();
+                                removeFirefly(oldest);
+                            }
+                            updateMessageScales();
+                        }
                         trimMessages();
 
                         const qrImgBox = document.getElementById('qr-image-center');
