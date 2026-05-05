@@ -9,8 +9,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const { GoogleSpreadsheet } = require('google-spreadsheet');
-const { JWT } = require('google-auth-library');
 const fs = require('fs');
 require('dotenv').config();
 
@@ -21,10 +19,31 @@ const io = new Server(server, {
 });
 
 // --- [환경 설정] ---
-const MAX_MESSAGES = 200; // 최대 메시지 유지 개수
-let messageHistory = [];  // 메시지 저장소 (새로 접속한 스크린 동기화용)
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "agry"; 
+
+// --- [데이터 보존 설정] ---
+const MESSAGES_PATH = path.join(__dirname, 'messages.json');
+const MAX_MESSAGES = 200; // 최대 메시지 유지 개수
+let messageHistory = [];  // 메시지 저장소
+
+// 서버 시작 시 기존 메시지 불러오기
+try {
+    if (fs.existsSync(MESSAGES_PATH)) {
+        messageHistory = JSON.parse(fs.readFileSync(MESSAGES_PATH, 'utf8'));
+        console.log(`📜 기존 메시지 ${messageHistory.length}건 복구 완료`);
+    }
+} catch (e) {
+    console.error('❌ 메시지 복구 실패:', e.message);
+    messageHistory = [];
+}
+
+// 메시지 저장 함수 (비동기 방식으로 변경하여 성능 최적화)
+function saveMessages() {
+    fs.writeFile(MESSAGES_PATH, JSON.stringify(messageHistory, null, 4), (err) => {
+        if (err) console.error('❌ 메시지 저장 실패:', err.message);
+    });
+}
 
 // --- [모바일 페이지 문구 설정] ---
 const CONFIG_PATH = path.join(__dirname, 'config.json');
@@ -55,31 +74,8 @@ try {
     console.error('❌ 설정 로드 실패:', e.message);
 }
 
-// --- [구글 시트 설정] ---
-const SPREADSHEET_ID = process.env.SPREADSHEET_ID; // .env 파일에서 로드
-const serviceAccountAuth = new JWT({
-    email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
-
-async function saveToSheet(data) {
-    if (!SPREADSHEET_ID) return; // ID가 없으면 중단
-    try {
-        const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
-        await doc.loadInfo();
-        const sheet = doc.sheetsByIndex[0]; // 첫 번째 시트 사용
-        await sheet.addRow({
-            '날짜': new Date().toLocaleDateString('ko-KR'),
-            '시간': new Date().toLocaleTimeString('ko-KR'),
-            '내용': data.content,
-            '색상': data.color
-        });
-        console.log('📊 구글 시트 저장 완료');
-    } catch (e) {
-        console.error('❌ 구글 시트 저장 실패:', e.message);
-    }
-}
+// --- [데이터 처리] ---
+// (구글 시트 연동 기능이 호퍼 사령관의 명령으로 삭제되었습니다.)
 
 // --- [욕설 필터 설정] ---
 function filterContent(text) {
@@ -167,8 +163,8 @@ io.on('connection', (socket) => {
         io.emit('new_message', newMessage);
         console.log('📩 메시지 중계 완료:', data.content);
 
-        // 구글 시트 비동기 저장
-        saveToSheet(newMessage);
+        // 파일 저장
+        saveMessages();
 
         // 성공 응답 전송
         if (callback) callback({ status: 'success' });
@@ -184,6 +180,7 @@ io.on('connection', (socket) => {
 
         // 히스토리에서 삭제
         messageHistory = messageHistory.filter(m => m.id !== data.messageId);
+        saveMessages();
         
         // 모든 클라이언트에 삭제 방송
         io.emit('remove_message', data.messageId);
@@ -200,6 +197,7 @@ io.on('connection', (socket) => {
 
         // 히스토리 비우기
         messageHistory = [];
+        saveMessages();
         
         // 모든 클라이언트에 초기화 방송
         io.emit('clear_screen');
@@ -218,6 +216,7 @@ io.on('connection', (socket) => {
         const index = messageHistory.findIndex(m => m.id === data.messageId);
         if (index !== -1) {
             messageHistory[index].content = data.newContent;
+            saveMessages();
             
             // 모든 클라이언트에 수정 방송
             io.emit('update_message', {
@@ -270,4 +269,5 @@ server.listen(PORT, () => {
 - 모바일 접속: http://localhost:${PORT}/mobile
 ------------------------------------------------
     `);
+});
 });
